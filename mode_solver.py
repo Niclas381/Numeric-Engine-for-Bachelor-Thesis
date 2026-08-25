@@ -4,7 +4,7 @@ from scipy.integrate import solve_ivp
 
 #Scaling factor and it's second derivative for FLWR metric
 
-def a(eta):             #Message to me: Check that omega doesnt produce issues do to division by a for certain a.
+def a(eta):             #Message to me: Check that omega doesnt produce issues due to division by a for certain a.
     return np.exp(eta)
 
 def a_double_prime(eta):
