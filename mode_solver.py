@@ -4,11 +4,11 @@ from scipy.integrate import solve_ivp
 
 #Scaling factor and it's second derivative for FLWR metric
 
-def a(eta):
-    return eta**2
+def a(eta):             #Message to me: Check that omega doesnt produce issues do to division by a for certain a.
+    return np.exp(eta)
 
 def a_double_prime(eta):
-    return 2
+    return np.exp(eta)
 
 #Frequency in Mode-Equation
 
@@ -33,8 +33,8 @@ def rhs(eta, y, k, x, m):
 #Initial conditions for ODE
 
 def initial_conditions(k, m, x, eta_initial):
-    chi_initial = k                                 #I will choose realistic functions later, maybe plane waves are good. 
-    chi_prime_initial = k
+    chi_initial = np.exp(- 1j * k * eta_initial) / np.sqrt(2 * k)                                 #I will choose realistic functions later, maybe plane waves are good. 
+    chi_prime_initial = - 1j * k * np.exp(- 1j * k * eta_initial) / np.sqrt(2 * k)
     return np.array([
         chi_initial,
         chi_prime_initial
@@ -59,7 +59,7 @@ def solve(k, x, m, eta_initial, eta_final, rtol, atol, y0, method):
 
 #Structure and Write solutions into mode_solutions.h5
 
-def save_sol(filename, run_name, k_values, eta_values, m, x, a_model_name, method, rtol, atol, meth):
+def save_sol(filename, run_name, k_values, eta_values, m, x, a_model_name, method, rtol, atol):
     with h5py.File(filename, "a") as h5:
         runs = h5.require_group("runs")
 
@@ -73,12 +73,16 @@ def save_sol(filename, run_name, k_values, eta_values, m, x, a_model_name, metho
         run.attrs["mass"] = m
         run.attrs["Xi"] = x
         run.attrs["a_model"] = a_model_name
-        run.attrs["method"] = meth
+        run.attrs["method"] = method
         run.attrs["rtol"] = rtol
         run.attrs["atol"] = atol
 
         number_of_k = len(k_values)
         number_of_eta = len(eta_values)
+
+        a_values = []
+        for eta in eta_values:
+            a_values.append(a(eta))
 
         k_values = np.asarray(
             k_values,
@@ -86,6 +90,10 @@ def save_sol(filename, run_name, k_values, eta_values, m, x, a_model_name, metho
         )
         eta_values = np.asarray(
             eta_values,
+            dtype=np.float64
+        )
+        a_eta = np.asarray(
+            a_values,
             dtype=np.float64
         )
 
@@ -98,7 +106,7 @@ def save_sol(filename, run_name, k_values, eta_values, m, x, a_model_name, metho
 
         background.create_dataset(
             "a",
-            data=a(eta_values)
+            data= a_eta
         )
 
         modes = run.create_group("modes")
@@ -140,16 +148,18 @@ def save_sol(filename, run_name, k_values, eta_values, m, x, a_model_name, metho
         for i, k in enumerate(k_values):
             y0 = initial_conditions(k, m, x, eta_values[0])
 
-            solution = solve(k, x, m, eta_values[0], eta_values[-1], rtol, atol, y0, meth)
+            solution = solve(k, x, m, eta_values[0], eta_values[-1], rtol, atol, y0, method)
 
-            if not solution.success():
+            if not solution.success:
                 raise RuntimeError(
-                    f"Solver failed for {k}"
+                    f"Solver failed for k = {k}: "
                     f"{solution.message}"
                 )
 
             solution_values = solution.sol(eta_values)
 
+            print(f"Now at mode k = {k}")
+            
             k_dataset[i] = k
             chi_dataset[i, :] = solution_values[0]
             chi_prime_dataset[i, :] = solution_values[1]
