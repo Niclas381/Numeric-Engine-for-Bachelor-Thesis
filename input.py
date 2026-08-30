@@ -59,6 +59,9 @@ def four_velocity(eta):
         u_2,
         u_3], dtype= np.float64)
 
+def t_grid(epsilon, delta):
+    return np.linspace(0.0, epsilon + delta, 201)
+
 #real part of scalar product provided by state inpute
 def mu_sigma(f, g):
     mu_sigma_integral_core = lambda eta, x, y, z: f(eta, x, y, z) * g(eta, x, y, z)
